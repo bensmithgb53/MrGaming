@@ -1,1 +1,30 @@
-H
+name: Weekly Movie Scraper
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"  # Runs every Sunday at midnight UTC
+
+jobs:
+  scrape_movies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'  # Replace with your Python version
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4
+
+      - name: Run scraper script
+        run: python scrape_1hd.py
+
+      - name: Save m3u8 URLs
+        run: |
+          echo "${{ steps.output.outputs.m3u8_urls }}" > m3u8_url.txt
+          cat m3u8_url.txt
