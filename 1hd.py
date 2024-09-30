@@ -19,8 +19,11 @@ def scrape_1hd():
     # Find all movie links
     movie_links = soup.find_all('a', class_='film-mask')
 
+    print(f"Found {len(movie_links)} movie links.")
+
     for link in movie_links:
         movie_url = link['href']  # Get the movie link
+        print(f"Fetching movie page: {movie_url}")
 
         # Visit the movie page to extract the title and thumbnail
         movie_page_response = requests.get(movie_url)
@@ -32,6 +35,7 @@ def scrape_1hd():
             title_element = movie_page_soup.find('h2', class_='heading-xl')
             if title_element:
                 movie_title = title_element.text.strip()
+                print(f"Found title: {movie_title}")
             else:
                 print(f"Title element not found for {movie_url}.")
                 continue  # Skip this movie if no title is found
@@ -40,6 +44,7 @@ def scrape_1hd():
             thumbnail_img = movie_page_soup.find('img', class_='film-thumbnail-img')
             if thumbnail_img:
                 thumbnail_url = thumbnail_img['src']  # Get the thumbnail URL
+                print(f"Found thumbnail URL: {thumbnail_url}")
             else:
                 print(f"No thumbnail found for the movie link: {movie_url}.")
                 continue  # Skip this movie if no thumbnail is found
@@ -53,6 +58,7 @@ def scrape_1hd():
                     "thumbnail_url": thumbnail_url,
                     "m3u8_links": m3u8_links
                 })
+                print(f"Found {len(m3u8_links)} m3u8 links for {movie_title}.")
             else:
                 print(f"No m3u8 links found for {movie_title}.")
         else:
@@ -74,6 +80,8 @@ def scrape_1hd():
             for m3u8_url in movie['m3u8_links']:
                 m3u8_file.write(f"#EXTINF:-1, {movie['title']}\n")
                 m3u8_file.write(f"{m3u8_url}\n")
+    
+    print(f"Successfully wrote {len(movies_data)} movies to new.m3u8.")
 
 if __name__ == "__main__":
     scrape_1hd()
