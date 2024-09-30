@@ -20,15 +20,25 @@ def scrape_1hd():
     movie_links = soup.find_all('a', class_='film-mask')
     
     for link in movie_links:
-        movie_url = link['href']
-        thumbnail_url = link.find('img')['src']  # Get the thumbnail URL
-        movie_title = link.find('h3', class_='heading-xl').text.strip()  # Get movie title
+        movie_url = link['href']  # Get the movie link
 
-        # Visit the movie page to extract m3u8 links
+        # Visit the movie page to extract the title and thumbnail
         movie_page_response = requests.get(movie_url)
         if movie_page_response.status_code == 200:
             movie_page_content = movie_page_response.text
+            movie_page_soup = BeautifulSoup(movie_page_content, 'html.parser')
+
+            # Extract the movie title
+            movie_title = movie_page_soup.find('h3', class_='heading-xl').text.strip()
             
+            # Extract the thumbnail image
+            thumbnail_img = movie_page_soup.find('img', class_='film-thumbnail-img')
+            if thumbnail_img:
+                thumbnail_url = thumbnail_img['src']  # Get the thumbnail URL
+            else:
+                print(f"No thumbnail found for the movie link: {movie_url}")
+                continue  # Skip this movie if no thumbnail is found
+
             # Find all m3u8 links on the movie page
             m3u8_links = re.findall(r'(https://[^\s]+\.m3u8)', movie_page_content)
             if m3u8_links:
@@ -41,7 +51,7 @@ def scrape_1hd():
             else:
                 print(f"No m3u8 links found for {movie_title}.")
         else:
-            print(f"Failed to fetch the movie page for {movie_title}.")
+            print(f"Failed to fetch the movie page for {movie_url}.")
     
     # Write to new.m3u8 file
     with open('new.m3u8', 'w') as m3u8_file:
