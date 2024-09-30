@@ -1,47 +1,33 @@
-name: Run IPTV Scraper
+name: Scrape 1HD
 
 on:
-  # Schedule the workflow to run weekly, every Sunday at 2:00 AM UTC
   schedule:
-    - cron: '0 2 * * 0'
-  # Allows the workflow to be triggered manually from the GitHub Actions tab
-  workflow_dispatch:
+    - cron: '0 0 * * 0'  # This will run every Sunday at midnight
+  workflow_dispatch:  # Allows manual trigger of the workflow
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
 
     steps:
-      # Step 1: Check out the repository
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-      # Step 2: Set up Python 3.x environment
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.x'
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
 
-      # Step 3: Install required dependencies
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install requests beautifulsoup4
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install beautifulsoup4 requests
 
-      # Step 4: Run the 1hd scraper script
-      - name: Run scraper
-        run: python 1hd.py
+    - name: Run the script
+      run: python 1hd.py  # Change to the correct name of your script file
 
-      # Step 5: Upload generated m3u8 playlist as an artifact using v4
-      - name: Upload m3u8 playlist
-        uses: actions/upload-artifact@v4
-        with:
-          name: playlist-m3u8
-          path: playlist.m3u8
-
-      # Step 6: Upload m3u8_url.txt as an artifact using v4
-      - name: Upload m3u8 URLs
-        uses: actions/upload-artifact@v4
-        with:
-          name: m3u8-url-txt
-          path: m3u8_url.txt
+    - name: Upload m3u8 file
+      uses: actions/upload-artifact@v4
+      with:
+        name: m3u8-file
+        path: new.m3u8
