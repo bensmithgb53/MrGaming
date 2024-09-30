@@ -1,89 +1,94 @@
 import requests
 from bs4 import BeautifulSoup
-import re
+import json
 
-def scrape_1hd():
-    base_url = 'https://1hd.sh/movies/'
-    response = requests.get(base_url)
+class FmovieProvider:
+    def __init__(self):
+        self.main_url = "https://www1.fmovie.ws"
 
-    if response.status_code != 200:
-        print("Failed to fetch the main movie page.")
-        return
+    def get_main_page(self):
+        response = requests.get(f"{self.main_url}/")
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-    html_content = response.content
-    soup = BeautifulSoup(html_content, 'html.parser')
+        sections = {
+            "Movies": "div#movie-section .item",
+            "TV Shows": "div#tv-section .item",
+            "Trending": "div#trending-section .item",
+            "Latest Movies": "div#latest-movies .item",
+            "Latest TV Shows": "div#latest-tv .item"
+        }
 
-    # Prepare to collect movie data
-    movies_data = []
+        all_items = []
 
-    # Find all movie links
-    movie_links = soup.find_all('a', class_='film-mask')
+        for name, element in sections.items():
+            items = soup.select(element)
+            for item in items:
+                title = item.select_one("h3 a").text.strip()
+                link = self.fix_url(item.select_one("h3 a")['href'])
+                image = item.select_one("a img")['src']
+                quality_info = item.select_one(".quality").text.strip() if item.select_one(".quality") else "N/A"
+                quality = self.get_quality_from_string(quality_info)
 
-    print(f"Found {len(movie_links)} movie links.")
-
-    for link in movie_links:
-        movie_url = link['href']  # Get the movie link
-        print(f"Fetching movie page: {movie_url}")
-
-        # Visit the movie page to extract the title and thumbnail
-        movie_page_response = requests.get(movie_url)
-        if movie_page_response.status_code == 200:
-            movie_page_content = movie_page_response.text
-            movie_page_soup = BeautifulSoup(movie_page_content, 'html.parser')
-
-            # Extract the movie title from <h2 class="heading-xl">
-            title_element = movie_page_soup.find('h2', class_='heading-xl')
-            if title_element:
-                movie_title = title_element.text.strip()
-                print(f"Found title: {movie_title}")
-            else:
-                print(f"Title element not found for {movie_url}.")
-                continue  # Skip this movie if no title is found
-
-            # Extract the thumbnail image
-            thumbnail_img = movie_page_soup.find('img', class_='film-thumbnail-img')
-            if thumbnail_img:
-                thumbnail_url = thumbnail_img['src']  # Get the thumbnail URL
-                print(f"Found thumbnail URL: {thumbnail_url}")
-            else:
-                print(f"No thumbnail found for the movie link: {movie_url}.")
-                continue  # Skip this movie if no thumbnail is found
-
-            # Find all m3u8 links on the movie page
-            m3u8_links = re.findall(r'(https://[^\s]+\.m3u8)', movie_page_content)
-            if m3u8_links:
-                # Add movie details to the list
-                movies_data.append({
-                    "title": movie_title,
-                    "thumbnail_url": thumbnail_url,
-                    "m3u8_links": m3u8_links
+                all_items.append({
+                    'title': title,
+                    'link': link,
+                    'image': image,
+                    'quality': quality,
+                    'type': 'Movie' if '/movie/' in link else 'TV Series'
                 })
-                print(f"Found {len(m3u8_links)} m3u8 links for {movie_title}.")
-            else:
-                print(f"No m3u8 links found for {movie_title}.")
-        else:
-            print(f"Failed to fetch the movie page for {movie_url}.")
 
-    # Write to new.m3u8 file in the specified format
-    with open('new.m3u8', 'w') as m3u8_file:
-        # Write the m3u8 file header
-        m3u8_file.write("#EXTM3U\n")
-        m3u8_file.write("#EXT-X-VERSION:4\n")
-        m3u8_file.write("#EXT-X-TARGETDURATION:3\n")
-        m3u8_file.write("#EXT-X-MEDIA-SEQUENCE:4855\n")
-        m3u8_file.write("#EXT-X-DISCONTINUITY-SEQUENCE:0\n")
+        return all_items
 
-        # Write each movie's information in the specified format
-        for movie in movies_data:
-            # Assuming only the first m3u8 link is needed for each title
-            m3u8_url = movie['m3u8_links'][0] if movie['m3u8_links'] else "No m3u8 link found"
-            m3u8_file.write(f"#EXTINF:-1, {movie['title']}\n")  # Title in m3u8
-            m3u8_file.write(f"{m3u8_url}\n")  # The m3u8 URL
+    def get_quality_from_string(self, quality_string):
+        return quality_string.strip()
 
-            # Optional: Add thumbnail as a comment for clarity
-            m3u8_file.write(f"# Thumbnail: {movie['thumbnail_url']}\n")
+    def fix_url(self, url):
+        if url.startswith('/'):
+            return self.main_url + url
+        return url
 
-    print(f"Successfully wrote {len(movies_data)} movies to new.m3u8.")
+    def load_video_links(self, url):
+        response = requests.get(url)
+        soup = BeautifulSoup(response.content, 'html.parser')
+        movie_id = soup.select_one("div#watch")['data-id']
+        vrf_url = f"{self.main_url}/ajax/film/servers?id={movie_id}"
+
+        # Get server information
+        servers_response = requests.get(vrf_url)
+        servers_data = json.loads(servers_response.text)
+
+        if 'html' not in servers_data:
+            print(f"No video servers found for {url}")
+            return []
+
+        soup_servers = BeautifulSoup(servers_data['html'], 'html.parser')
+        links = []
+
+        for server in soup_servers.select("div.episode a"):
+            server_id = server['data-ep']
+            server_response = requests.get(f"{self.main_url}/ajax/episode/info?id={server_id}")
+            server_info = json.loads(server_response.text)
+            if 'url' in server_info:
+                decoded_url = server_info['url']  # Add your decoding logic if needed
+                links.append(decoded_url)
+
+        return links
+
+    def save_to_m3u8(self, items):
+        with open("new.m3u8", "w") as f:  # Changed output file to new.m3u8
+            for item in items:
+                f.write(f"#EXTINF:-1,{item['title']}\n")
+                f.write(f"{item['link']}\n")
 
 if __name__ == "__main__":
-    scrape_1hd()
+    provider = FmovieProvider()
+    all_items = provider.get_main_page()
+
+    all_video_links = []
+    for item in all_items:
+        video_links = provider.load_video_links(item['link'])
+        for link in video_links:
+            all_video_links.append({'title': item['title'], 'link': link})
+
+    provider.save_to_m3u8(all_video_links)
+    print("Saved video links to new.m3u8")
