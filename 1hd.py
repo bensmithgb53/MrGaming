@@ -66,6 +66,7 @@ def scrape_1hd():
 
     # Write to new.m3u8 file in the specified format
     with open('new.m3u8', 'w') as m3u8_file:
+        # Write the m3u8 file header
         m3u8_file.write("#EXTM3U\n")
         m3u8_file.write("#EXT-X-VERSION:4\n")
         m3u8_file.write("#EXT-X-TARGETDURATION:3\n")
