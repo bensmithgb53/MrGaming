@@ -8,7 +8,7 @@ def scrape_1hd():
 
     # Check if the request was successful
     if response.status_code != 200:
-        print(f"Failed to fetch the page. Status code: {response.status_code}")
+        print(f"Failed to fetch the main page. Status code: {response.status_code}")
         return
 
     html_content = response.content
@@ -21,7 +21,6 @@ def scrape_1hd():
     movie_titles = soup.find_all('h3', class_='heading-xl')
     thumbnails = soup.find_all('img', class_='film-thumbnail-img')
 
-    # Debugging: Print lengths to check if we have matching numbers
     print(f"Found {len(movie_titles)} movie titles")
     print(f"Found {len(thumbnails)} thumbnails")
 
@@ -35,9 +34,13 @@ def scrape_1hd():
         movie_title = movie_titles[i].text.strip()  # Get movie title
         thumbnail_url = thumbnails[i]['src']  # Get thumbnail URL
 
-        # Construct the video page link (you may need to adjust this based on the site's structure)
-        video_page_link = thumbnails[i].parent['href']  # Assuming the <a> tag is the parent of the <img>
-
+        # Assuming each thumbnail is wrapped in an <a> tag linking to the movie page
+        video_page_link = thumbnails[i].parent['href'] if thumbnails[i].parent.has_attr('href') else None
+        
+        if not video_page_link:
+            print(f"No link found for {movie_title}. Skipping.")
+            continue
+        
         print(f"Processing movie: {movie_title}, video page link: {video_page_link}")
 
         # Visit the video page to extract the m3u8 link
