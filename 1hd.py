@@ -52,7 +52,7 @@ def scrape_1hd():
             # Find all m3u8 links on the movie page
             m3u8_links = re.findall(r'(https://[^\s]+\.m3u8)', movie_page_content)
             if m3u8_links:
-                # Create a section for each movie in the m3u8 file
+                # Add movie details to the list
                 movies_data.append({
                     "title": movie_title,
                     "thumbnail_url": thumbnail_url,
@@ -64,7 +64,7 @@ def scrape_1hd():
         else:
             print(f"Failed to fetch the movie page for {movie_url}.")
 
-    # Write to new.m3u8 file
+    # Write to new.m3u8 file in the specified format
     with open('new.m3u8', 'w') as m3u8_file:
         m3u8_file.write("#EXTM3U\n")
         m3u8_file.write("#EXT-X-VERSION:4\n")
@@ -72,15 +72,16 @@ def scrape_1hd():
         m3u8_file.write("#EXT-X-MEDIA-SEQUENCE:4855\n")
         m3u8_file.write("#EXT-X-DISCONTINUITY-SEQUENCE:0\n")
 
+        # Write each movie's information in the specified format
         for movie in movies_data:
-            # Add thumbnail and title as a comment (or however you want to categorize them)
-            m3u8_file.write(f"# Movie: {movie['title']}\n")
+            # Assuming only the first m3u8 link is needed for each title
+            m3u8_url = movie['m3u8_links'][0] if movie['m3u8_links'] else "No m3u8 link found"
+            m3u8_file.write(f"#EXTINF:-1, {movie['title']}\n")  # Title in m3u8
+            m3u8_file.write(f"{m3u8_url}\n")  # The m3u8 URL
+
+            # Optional: Add thumbnail as a comment for clarity
             m3u8_file.write(f"# Thumbnail: {movie['thumbnail_url']}\n")
 
-            for m3u8_url in movie['m3u8_links']:
-                m3u8_file.write(f"#EXTINF:-1, {movie['title']}\n")
-                m3u8_file.write(f"{m3u8_url}\n")
-    
     print(f"Successfully wrote {len(movies_data)} movies to new.m3u8.")
 
 if __name__ == "__main__":
